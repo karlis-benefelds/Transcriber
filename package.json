@@ -1,0 +1,20 @@
+{
+  "name": "class-transcriber",
+  "version": "1.0.0",
+  "description": "A web-based transcription service for Minerva University class recordings",
+  "main": "app.py",
+  "scripts": {
+    "start": "python app.py",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:start": "docker-compose up --build",
+    "docker:stop": "docker-compose down",
+    "install": "pip install -r requirements.txt"
+  },
+  "keywords": ["transcription", "flask", "whisper", "audio", "video"],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "python": ">=3.9"
+  }
+}
