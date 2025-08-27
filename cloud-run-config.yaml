@@ -1,0 +1,102 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: transcriber-app
+  annotations:
+    # Cloud Run configuration
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+    # Enable CPU boost for faster startup
+    run.googleapis.com/cpu-boost: true
+spec:
+  template:
+    metadata:
+      annotations:
+        # Resource allocation
+        run.googleapis.com/memory: "8Gi"
+        run.googleapis.com/cpu: "4"
+        # Timeout for long-running transcriptions (60 minutes)
+        run.googleapis.com/timeout: "3600s"
+        # Maximum concurrent requests per instance
+        run.googleapis.com/max-instances: "10"
+        run.googleapis.com/min-instances: "0"
+        # Session affinity for file uploads
+        run.googleapis.com/sessionAffinity: true
+    spec:
+      # Container timeout (60 minutes for transcription)
+      timeoutSeconds: 3600
+      containerConcurrency: 10
+      containers:
+      - image: gcr.io/PROJECT_ID/transcriber-app:latest
+        ports:
+        - containerPort: 8080
+        env:
+        # Application configuration
+        - name: PORT
+          value: "8080"
+        - name: FLASK_ENV
+          value: "production"
+        - name: DEV_MODE
+          value: "false"
+        - name: MAX_CONTENT_LENGTH
+          value: "524288000"  # 500MB
+        
+        # Security - these should be set via Secret Manager
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: transcriber-secrets
+              key: secret-key
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: transcriber-secrets
+              key: google-client-id
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: transcriber-secrets
+              key: google-client-secret
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: transcriber-secrets
+              key: openai-api-key
+        
+        resources:
+          limits:
+            # 8GB RAM, 4 vCPUs for intensive transcription
+            memory: "8Gi"
+            cpu: "4"
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Startup probe for long initialization
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 12  # Allow 2 minutes for startup

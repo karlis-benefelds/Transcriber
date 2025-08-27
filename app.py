@@ -403,6 +403,52 @@ def index():
 def favicon():
     return '', 204
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Google Cloud Run"""
+    try:
+        # Basic health checks
+        health_status = {
+            'status': 'healthy',
+            'timestamp': datetime.datetime.now().isoformat(),
+            'version': 'v1.0',
+            'checks': {
+                'torch_available': False,
+                'cuda_available': False,
+                'openai_configured': bool(openai_client),
+                'temp_dir_writable': False
+            }
+        }
+        
+        # Check PyTorch availability
+        try:
+            import torch
+            health_status['checks']['torch_available'] = True
+            health_status['checks']['cuda_available'] = torch.cuda.is_available()
+        except ImportError:
+            pass
+        
+        # Check temp directory is writable
+        try:
+            import tempfile
+            import os
+            test_file = os.path.join(tempfile.gettempdir(), 'health_check_test')
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            health_status['checks']['temp_dir_writable'] = True
+        except Exception:
+            pass
+        
+        return jsonify(health_status), 200
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.datetime.now().isoformat()
+        }), 503
+
 @app.route('/api/transcribe', methods=['POST'])
 @requires_auth
 def start_transcription():
