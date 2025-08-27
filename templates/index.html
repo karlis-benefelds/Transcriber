@@ -336,13 +336,25 @@
         /* Full-width chat for AI Analysis */
         .full-width-content {
             flex: 1;
-            width: 100%;
+            width: calc(100vw - var(--sidebar-width) - var(--space-3));
             max-width: none;
             margin: 0;
+            margin-left: 0;
+            margin-right: calc(-1 * var(--space-3));
             padding: 0;
             height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Remove container padding for AI analysis tab */
+        .content-container.ai-analysis-active {
+            padding: 0 !important;
+            padding-left: var(--space-3) !important;
+            max-width: none !important;
+            margin: 0 !important;
+            width: 100% !important;
         }
 
         .tab-content {
@@ -784,6 +796,8 @@
         /* Full-Width AI Chat Interface */
         .ai-chat-full {
             height: 100vh;
+            width: 100%;
+            max-width: none;
             display: flex;
             flex-direction: column;
             background: var(--color-white);
@@ -855,11 +869,12 @@
         }
 
         .chat-messages {
-            max-width: 800px;
-            margin: 0 auto;
+            width: 100%;
+            margin: 0;
             display: flex;
             flex-direction: column;
             gap: var(--space-6);
+            max-width: none;
         }
 
         .ai-message, .user-message {
@@ -870,10 +885,12 @@
 
         .ai-message {
             align-self: flex-start;
+            margin-right: auto;
         }
 
         .user-message {
             align-self: flex-end;
+            margin-left: auto;
         }
 
         .message-content {
@@ -896,6 +913,18 @@
             border-bottom-right-radius: 4px;
         }
 
+        .message-content {
+            font-weight: var(--font-regular);
+            line-height: 1.7;
+        }
+
+        .message-content h1 {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            margin: var(--space-4) 0 var(--space-3) 0;
+            color: inherit;
+        }
+
         .message-content h2 {
             font-size: var(--text-xl);
             font-weight: var(--font-semibold);
@@ -910,18 +939,29 @@
             color: inherit;
         }
 
+        .message-content p {
+            margin: var(--space-2) 0;
+            font-weight: var(--font-regular);
+        }
+
         .message-content ul {
             margin: var(--space-2) 0;
-            padding-left: var(--space-3);
+            padding-left: var(--space-4);
         }
 
         .message-content li {
             margin: var(--space-1) 0;
+            font-weight: var(--font-regular);
         }
 
         .message-content strong {
             font-weight: var(--font-semibold);
             color: inherit;
+        }
+
+        .message-content em {
+            font-style: italic;
+            font-weight: var(--font-regular);
         }
 
         .typing-indicator {
@@ -974,8 +1014,9 @@
         }
 
         .chat-input-container {
-            max-width: 800px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: none;
+            margin: 0;
             display: flex;
             gap: var(--space-3);
             padding: var(--space-4);
@@ -1416,7 +1457,7 @@
                             <div class="chat-messages" id="ai-chat-messages">
                                 <div class="ai-message">
                                     <div class="message-content">
-                                        Hello! I'm here to help you analyze class transcripts. Upload your transcript files using the sidebar and I can provide insights on student participation, key topics discussed, learning outcomes, and more. Click "Initial Analysis" for an automated overview, or ask me specific questions about the content.
+                                        Ready to find out what really happened in your class? Upload a transcript and I'll spill the academic tea.
                                     </div>
                                 </div>
                                 
@@ -1456,6 +1497,10 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
+        // Prevent double initialization
+        window.transcriptionAppInitialized = true;
+        window.aiChatInitialized = true;
+        
         // Tab Navigation System
         document.addEventListener('DOMContentLoaded', function() {
             const tabButtons = document.querySelectorAll('.nav-item');
@@ -1485,10 +1530,14 @@
 
                 // Show/hide transcripts section based on tab
                 const transcriptsSection = document.getElementById('transcripts-section');
+                const contentContainer = document.querySelector('.content-container');
+                
                 if (targetTab === 'analysis') {
                     transcriptsSection.style.display = 'block';
+                    contentContainer.classList.add('ai-analysis-active');
                 } else {
                     transcriptsSection.style.display = 'none';
+                    contentContainer.classList.remove('ai-analysis-active');
                 }
             }
 
@@ -1804,15 +1853,32 @@
             }
 
             function formatAIResponse(text) {
-                // Basic markdown-like formatting
-                return text
+                // Enhanced markdown formatting
+                let formatted = text
+                    // Handle headings first (with emojis)
+                    .replace(/^(#{1,3})\s*(.*)$/gm, function(match, hashes, content) {
+                        const level = hashes.length;
+                        return `<h${level}>${content.trim()}</h${level}>`;
+                    })
+                    // Handle bold text
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    // Handle italic text  
                     .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    // Handle line breaks
+                    .replace(/\n\n/g, '</p><p>')
                     .replace(/\n/g, '<br>')
-                    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-                    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-                    .replace(/^- (.*$)/gm, '<li>$1</li>')
-                    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+                    // Handle bullet points
+                    .replace(/^[\-\*]\s+(.*$)/gm, '<li>$1</li>');
+                
+                // Wrap bullet points in ul tags
+                formatted = formatted.replace(/((<li>.*?<\/li>\s*)+)/g, '<ul>$1</ul>');
+                
+                // Wrap in paragraphs
+                if (!formatted.startsWith('<h') && !formatted.startsWith('<ul')) {
+                    formatted = '<p>' + formatted + '</p>';
+                }
+                
+                return formatted;
             }
 
             async function sendAIMessage(message, isInitialAnalysis) {
@@ -1823,8 +1889,8 @@
                     
                     // Add enabled transcript files
                     const enabledFiles = transcriptFiles.filter(f => f.enabled);
-                    enabledFiles.forEach(fileObj => {
-                        formData.append('files', fileObj.file);
+                    enabledFiles.forEach((fileObj, index) => {
+                        formData.append(`file_${index}`, fileObj.file);
                     });
                     
                     if (isInitialAnalysis) {

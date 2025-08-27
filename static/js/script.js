@@ -8,10 +8,10 @@ class TranscriptionApp {
 
     initializeElements() {
         // Containers
-        this.formContainer = document.getElementById('form-container');
-        this.progressContainer = document.getElementById('progress-container');
-        this.resultsContainer = document.getElementById('results-container');
-        this.errorContainer = document.getElementById('error-container');
+        this.formContainer = document.getElementById('workflow-container');
+        this.progressContainer = document.getElementById('progress-state');
+        this.resultsContainer = document.getElementById('success-state');
+        this.errorContainer = document.getElementById('error-state');
 
         // Form elements
         this.form = document.getElementById('transcription-form');
@@ -24,13 +24,13 @@ class TranscriptionApp {
         this.privacyMode = document.getElementById('privacy_mode');
 
         // Source groups
-        this.uploadGroup = document.getElementById('upload-group');
-        this.urlGroup = document.getElementById('url-group');
-        this.driveGroup = document.getElementById('drive-group');
+        this.uploadGroup = document.getElementById('upload-section');
+        this.urlGroup = document.getElementById('url-section');
+        this.driveGroup = document.getElementById('drive-section');
 
         // File input elements
         this.filePlaceholder = document.querySelector('.file-placeholder');
-        this.browseBtn = document.querySelector('.browse-btn');
+        this.browseBtn = document.querySelector('.file-input-area');
 
         // Progress elements
         this.progressText = document.getElementById('progress-text');
@@ -48,20 +48,32 @@ class TranscriptionApp {
 
     bindEvents() {
         // Form submission
-        this.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+        if (this.form) {
+            this.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+        }
 
         // Audio source radio buttons
-        this.audioSourceRadios.forEach(radio => {
-            radio.addEventListener('change', () => this.handleSourceChange());
-        });
+        if (this.audioSourceRadios) {
+            this.audioSourceRadios.forEach(radio => {
+                radio.addEventListener('change', () => this.handleSourceChange());
+            });
+        }
 
         // File input
-        this.audioFile.addEventListener('change', () => this.handleFileSelect());
-        this.browseBtn.addEventListener('click', () => this.audioFile.click());
+        if (this.audioFile) {
+            this.audioFile.addEventListener('change', () => this.handleFileSelect());
+        }
+        if (this.browseBtn) {
+            this.browseBtn.addEventListener('click', () => this.audioFile?.click());
+        }
 
         // Action buttons
-        this.newTranscriptionBtn.addEventListener('click', () => this.resetForm());
-        this.retryBtn.addEventListener('click', () => this.resetForm());
+        if (this.newTranscriptionBtn) {
+            this.newTranscriptionBtn.addEventListener('click', () => this.resetForm());
+        }
+        if (this.retryBtn) {
+            this.retryBtn.addEventListener('click', () => this.resetForm());
+        }
 
         // Initial source setup
         this.handleSourceChange();
@@ -293,5 +305,8 @@ class TranscriptionApp {
 
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new TranscriptionApp();
+    // Only initialize if not already handled by inline scripts
+    if (typeof window.transcriptionAppInitialized === 'undefined') {
+        new TranscriptionApp();
+    }
 });
