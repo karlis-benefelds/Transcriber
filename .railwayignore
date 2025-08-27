@@ -1,0 +1,11 @@
+*.ipynb
+*.md
+vibe-coded-ui-checklist.md
+GOOGLE_OAUTH_SETUP.md
+README.md
+Class Transcriber (v2.4).ipynb
+docker-compose.yml
+Dockerfile
+.git
+__pycache__
+.env
