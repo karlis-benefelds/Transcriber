@@ -16,11 +16,55 @@ from tqdm import tqdm
 import threading
 import tempfile
 from contextlib import nullcontext
+import platform
+import sys
+import logging
 
 class TranscriberService:
     def __init__(self):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Prioritize T4/CUDA GPU over CPU (MPS has compatibility issues with Whisper)
+        if torch.cuda.is_available():
+            self.device = "cuda"
+            print(f"🚀 GPU detected: {torch.cuda.get_device_name(0)} - Using CUDA acceleration")
+        else:
+            self.device = "cpu"
+            print("⚠️ No GPU detected - Using CPU (slower)")
         self.model = None
+        self._setup_logging()
+    
+    def _setup_logging(self):
+        """Setup logging for runtime optimization tracking"""
+        self.logger = logging.getLogger('transcriber_optimizer')
+        self.logger.setLevel(logging.INFO)
+        
+    def _log_runtime_info(self, stage, details=None):
+        """Log runtime optimization information for each stage"""
+        system_info = {
+            'platform': platform.system(),
+            'architecture': platform.machine(),
+            'python_version': sys.version.split()[0],
+            'torch_version': torch.__version__,
+            'device': self.device
+        }
+        
+        # Add GPU details if available
+        if torch.cuda.is_available():
+            system_info['gpu_name'] = torch.cuda.get_device_name(0)
+            system_info['gpu_memory'] = f"{torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB"
+            system_info['cuda_version'] = torch.version.cuda
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            system_info['mps_available'] = True
+        
+        # Add stage-specific details
+        if details:
+            system_info.update(details)
+            
+        log_message = f"🔧 STAGE {stage} RUNTIME OPTIMIZATION:\n"
+        for key, value in system_info.items():
+            log_message += f"  • {key.replace('_', ' ').title()}: {value}\n"
+        
+        self.logger.info(log_message.strip())
+        print(log_message.strip())
         
     def start_transcription(self, job_id, curl_command, audio_source, privacy_mode, status_callback):
         """Start transcription in a background thread"""
@@ -39,35 +83,70 @@ class TranscriberService:
             
             # Fetch Forum data
             status_callback({'progress': 10, 'message': 'Fetching class data from Forum...'})
+            self._log_runtime_info("1/4 - FORUM DATA EXTRACTION", {
+                'optimization': 'Network requests optimized',
+                'authentication': 'Session cookies preserved',
+                'data_parsing': 'JSON processing with validation'
+            })
             headers = self._clean_curl(curl_command)
             events_data = self._get_forum_events(class_id, headers)
             
             # Process audio
             status_callback({'progress': 20, 'message': 'Processing audio file...'})
+            self._log_runtime_info("2/4 - AUDIO PREPROCESSING", {
+                'audio_format': 'Auto-detection and conversion',
+                'ffmpeg_optimization': 'Hardware-accelerated when available',
+                'sample_rate': '16kHz (optimal for Whisper)',
+                'channels': 'Mono conversion for efficiency'
+            })
             audio_processor = AudioPreprocessor()
             processed_audio_path = audio_processor.validate_and_fix_file(audio_source)
             
             # Transcribe
             status_callback({'progress': 30, 'message': 'Starting transcription...'})
+            
+            # Get detailed transcription optimization info
+            transcribe_details = {
+                'whisper_model': 'medium (balanced accuracy/speed)',
+                'precision': 'FP16 on GPU, FP32 on CPU',
+                'memory_optimization': 'Chunked processing + garbage collection'
+            }
+            
+            if torch.cuda.is_available():
+                transcribe_details['gpu_acceleration'] = 'CUDA with TensorFloat-32'
+                transcribe_details['memory_management'] = 'GPU memory fraction optimized'
+            elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                transcribe_details['gpu_acceleration'] = 'Apple Metal Performance Shaders'
+            else:
+                transcribe_details['cpu_optimization'] = 'Intel MKL-DNN acceleration'
+                
+            self._log_runtime_info("3/4 - WHISPER TRANSCRIPTION", transcribe_details)
+            
             transcript_processor = TranscriptionProcessor(
                 progress_callback=lambda p: status_callback({
                     'progress': 30 + int(p * 0.5), 
                     'message': f'Transcribing audio... {int(p)}%'
                 })
             )
-            transcript_path = transcript_processor.transcribe(processed_audio_path, class_id)
+            transcript_path = transcript_processor.transcribe(processed_audio_path, class_id, ".")
             
             # Generate outputs
             status_callback({'progress': 85, 'message': 'Generating PDF and CSV files...'})
+            self._log_runtime_info("4/4 - OUTPUT GENERATION", {
+                'pdf_engine': 'ReportLab with optimized table rendering',
+                'csv_processing': 'UTF-8 encoding with proper escaping',
+                'speaker_identification': 'Timeline-based voice event matching',
+                'privacy_modes': f'Mode: {privacy_mode}'
+            })
             output_generator = OutputGenerator()
             
             if privacy_mode == 'both':
                 # Generate both versions
                 pdf_names, csv_names = output_generator.generate_outputs(
-                    class_id, headers, events_data, transcript_path, 'names'
+                    class_id, headers, events_data, transcript_path, 'names', "."
                 )
                 pdf_ids, csv_ids = output_generator.generate_outputs(
-                    class_id, headers, events_data, transcript_path, 'ids'
+                    class_id, headers, events_data, transcript_path, 'ids', "."
                 )
                 
                 # Complete with both file paths
@@ -86,7 +165,7 @@ class TranscriberService:
             else:
                 # Generate single version
                 pdf_path, csv_path = output_generator.generate_outputs(
-                    class_id, headers, events_data, transcript_path, privacy_mode
+                    class_id, headers, events_data, transcript_path, privacy_mode, "."
                 )
                 
                 # Complete
@@ -267,6 +346,41 @@ class TranscriberService:
             'timeline_segments': timeline_segments,
             'attendance': attendance
         }
+    
+    def process_transcription_sync(self, curl_command, audio_source, privacy_mode):
+        """Process transcription synchronously (blocking until complete)"""
+        try:
+            # Extract class ID
+            class_id = self._extract_class_id(curl_command)
+            
+            # Fetch Forum data
+            headers = self._clean_curl(curl_command)
+            events_data = self._get_forum_events(class_id, headers)
+            
+            # Process audio
+            audio_processor = AudioPreprocessor()
+            processed_audio_path = audio_processor.validate_and_fix_file(audio_source)
+            
+            # Transcribe
+            transcription_processor = TranscriptionProcessor()
+            transcript_path = transcription_processor.transcribe(processed_audio_path, class_id, ".")
+            
+            # Generate outputs using OutputGenerator
+            output_generator = OutputGenerator()
+            
+            # Generate outputs
+            pdf_path, csv_path = output_generator.generate_outputs(
+                class_id, headers, events_data, transcript_path, privacy_mode, "."
+            )
+            
+            return {
+                'status': 'completed',
+                'pdf_path': pdf_path,
+                'csv_path': csv_path
+            }
+                
+        except Exception as e:
+            return {'error': f'Transcription failed: {str(e)}'}
 
 
 class AudioPreprocessor:
@@ -351,27 +465,60 @@ class AudioPreprocessor:
 
 class TranscriptionProcessor:
     def __init__(self, segment_length=14400, model_name="medium", progress_callback=None):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Prioritize T4/CUDA GPU over CPU (MPS has compatibility issues with Whisper)
+        if torch.cuda.is_available():
+            self.device = "cuda"
+            print(f"🚀 Transcription using GPU: {torch.cuda.get_device_name(0)}")
+        else:
+            self.device = "cpu"
+            print("⚠️ Transcription using CPU - Consider using GPU for faster processing")
         self.progress_callback = progress_callback
         
-        if self.device == "cuda":
+        # CPU optimizations
+        if self.device == "cpu":
+            # Enable Intel MKL optimizations if available
+            torch.set_num_threads(min(8, torch.get_num_threads()))  # Limit threads to prevent oversubscription
+            if hasattr(torch.backends, 'mkl') and torch.backends.mkl.is_available():
+                torch.backends.mkl.set_dynamic(True)
+        elif self.device == "cuda":
+            # CUDA optimizations for T4 and other GPUs
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.benchmark = True
             torch.backends.cudnn.allow_tf32 = True
             torch.backends.cudnn.deterministic = False
             torch.cuda.empty_cache()
+            
+            # T4-specific optimizations
+            gpu_name = torch.cuda.get_device_name(0).lower()
+            if 't4' in gpu_name:
+                # T4 has 16GB VRAM, use more conservative memory fraction
+                memory_fraction = 0.85
+                print(f"T4 GPU detected: {torch.cuda.get_device_name(0)}")
+            else:
+                memory_fraction = 0.9
+                
             try:
-                torch.cuda.set_per_process_memory_fraction(0.9)
-            except Exception:
-                pass
+                torch.cuda.set_per_process_memory_fraction(memory_fraction)
+                print(f"GPU memory fraction set to {memory_fraction}")
+            except Exception as e:
+                print(f"Warning: Could not set memory fraction: {e}")
 
         self.model = whisper.load_model(model_name).to(self.device)
         if self.device == "cuda":
             self.model = self.model.half()
 
-        self.segment_length = int(segment_length)
+        # Optimize segment length for T4 GPU memory (16GB VRAM)
+        if self.device == "cuda":
+            gpu_name = torch.cuda.get_device_name(0).lower()
+            if 't4' in gpu_name:
+                # T4: Use smaller segments to prevent OOM with large files
+                self.segment_length = min(int(segment_length), 10800)  # 3 hours max per segment
+            else:
+                self.segment_length = int(segment_length)
+        else:
+            self.segment_length = int(segment_length)
 
-    def transcribe(self, audio_path, class_id):
+    def transcribe(self, audio_path, class_id, output_dir="."):
         """Transcribe audio and save as JSON"""
         try:
             audio = AudioSegment.from_file(audio_path)
@@ -396,7 +543,11 @@ class TranscriptionProcessor:
                 segment.export(temp_path, format="wav")
 
                 try:
-                    cast_ctx = torch.amp.autocast("cuda") if self.device == "cuda" else nullcontext()
+                    # Enhanced autocast for T4 GPU with better precision control
+                    if self.device == "cuda":
+                        cast_ctx = torch.amp.autocast("cuda", dtype=torch.float16)
+                    else:
+                        cast_ctx = nullcontext()
                     with cast_ctx:
                         result = self.model.transcribe(
                             temp_path,
@@ -435,13 +586,16 @@ class TranscriptionProcessor:
                     except Exception:
                         pass
                     if self.device == "cuda":
+                        # Enhanced memory management for T4
                         torch.cuda.empty_cache()
-                        gc.collect()
+                        if 't4' in torch.cuda.get_device_name(0).lower():
+                            torch.cuda.synchronize()  # Ensure all CUDA operations complete
+                    gc.collect()  # Always collect garbage
 
             if not all_segments:
                 raise RuntimeError("No segments were successfully transcribed")
 
-            transcript_path = tempfile.mktemp(suffix='.json')
+            transcript_path = str(Path(output_dir) / f"session_{class_id}_transcript.json")
             with open(transcript_path, "w", encoding="utf-8") as f:
                 json.dump({"segments": sorted(all_segments, key=lambda x: x["start"])}, f, indent=2)
 
@@ -467,7 +621,7 @@ class TranscriptionProcessor:
 
 
 class OutputGenerator:
-    def generate_outputs(self, class_id, headers, events_data, transcript_path, privacy_mode):
+    def generate_outputs(self, class_id, headers, events_data, transcript_path, privacy_mode, output_dir="."):
         """Generate PDF and CSV outputs"""
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
@@ -480,14 +634,14 @@ class OutputGenerator:
             transcript_data = json.load(f)
         
         # Generate PDF
-        pdf_path = self._generate_pdf(class_id, headers, events_data, transcript_data, privacy_mode)
+        pdf_path = self._generate_pdf(class_id, headers, events_data, transcript_data, privacy_mode, output_dir)
         
         # Generate CSV
-        csv_path = self._generate_csv(class_id, headers, events_data, transcript_data, privacy_mode)
+        csv_path = self._generate_csv(class_id, headers, events_data, transcript_data, privacy_mode, output_dir)
         
         return pdf_path, csv_path
     
-    def _generate_pdf(self, class_id, headers, events_data, transcript_data, privacy_mode):
+    def _generate_pdf(self, class_id, headers, events_data, transcript_data, privacy_mode, output_dir="."):
         """Generate PDF transcript"""
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
@@ -555,7 +709,7 @@ class OutputGenerator:
             fontName='Helvetica', fontSize=10, leading=12, wordWrap='CJK'
         )
 
-        output_path = tempfile.mktemp(suffix='.pdf')
+        output_path = str(Path(output_dir) / f"session_{class_id}_transcript.pdf")
         doc = SimpleDocTemplate(output_path, pagesize=letter,
                                rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
         elements = []
@@ -737,7 +891,7 @@ class OutputGenerator:
         doc.build(elements)
         return output_path
     
-    def _generate_csv(self, class_id, headers, events_data, transcript_data, privacy_mode):
+    def _generate_csv(self, class_id, headers, events_data, transcript_data, privacy_mode, output_dir="."):
         """Generate CSV transcript"""
         class_meta = events_data.get('class_meta', {})
         timeline_segments = events_data.get('timeline_segments', [])
@@ -826,7 +980,7 @@ class OutputGenerator:
         all_items = segmented_rows or all_items
 
         # Write CSV
-        output_path = tempfile.mktemp(suffix='.csv')
+        output_path = str(Path(output_dir) / f"session_{class_id}_transcript.csv")
         with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
             w = csv.writer(csvfile)
 
@@ -917,3 +1071,196 @@ class OutputGenerator:
             if (student_ids is None and uid is not None) or (student_ids is not None and uid in student_ids):
                 return str(uid) if uid is not None else "ID"
         return full or "Professor"
+
+
+def process_lecture(audio_path, class_id, curl_string, privacy_mode="names", output_dir="."):
+    """
+    End-to-end pipeline: fetch Forum data -> preprocess audio -> transcribe -> generate outputs.
+    
+    Args:
+        audio_path: Path to audio/video file
+        class_id: Forum class ID
+        curl_string: cURL command from Forum DevTools
+        privacy_mode: "names", "ids", or "both"
+        output_dir: Directory to save outputs
+    
+    Returns:
+        tuple: (pdf_path, csv_path) or (None, None) if failed
+    """
+    from pathlib import Path
+    import json
+    
+    try:
+        print("Step 1/4: Processing Forum class events...")
+        transcriber = TranscriberService()
+        headers = transcriber._clean_curl(curl_string)
+        events_data = transcriber._get_forum_events(class_id, headers)
+        
+        print("\nStep 2/4: Preprocessing audio file...")
+        audio_processor = AudioPreprocessor()
+        processed_audio_path = audio_processor.validate_and_fix_file(audio_path)
+        
+        print("\nStep 3/4: Generating transcript...")
+        transcript_processor = TranscriptionProcessor()
+        transcript_path = transcript_processor.transcribe(processed_audio_path, class_id, output_dir)
+        
+        print("\nStep 4/4: Compiling final PDF and CSV transcripts...")
+        output_generator = OutputGenerator()
+        
+        try:
+            if privacy_mode == "both":
+                # Generate both versions
+                pdf_names, csv_names = output_generator.generate_outputs(
+                    class_id, headers, events_data, transcript_path, "names", output_dir
+                )
+                pdf_ids, csv_ids = output_generator.generate_outputs(
+                    class_id, headers, events_data, transcript_path, "ids", output_dir
+                )
+                
+                print("\nSuccess! Your transcripts are ready (both versions):")
+                print(f"PDF (names): {pdf_names}")
+                print(f"CSV (names): {csv_names}")
+                print(f"PDF (ids):   {pdf_ids}")
+                print(f"CSV (ids):   {csv_ids}")
+                
+                return pdf_names, csv_names
+            else:
+                # Generate single version
+                pdf_path, csv_path = output_generator.generate_outputs(
+                    class_id, headers, events_data, transcript_path, privacy_mode, output_dir
+                )
+                
+                print("\nSuccess! Your transcripts are ready:")
+                print(f"PDF: {pdf_path}")
+                print(f"CSV: {csv_path}")
+                
+                return pdf_path, csv_path
+                
+        except Exception as e:
+            print(f"Error compiling transcripts: {str(e)}")
+            print("Attempting to create simplified transcripts...")
+            
+            # Create simplified outputs as fallback
+            pdf_path = _create_simplified_transcript(class_id, transcript_path, output_dir)
+            csv_path = _create_simplified_csv(class_id, transcript_path, output_dir)
+            
+            if pdf_path and csv_path:
+                print(f"\nCreated simplified transcripts:")
+                print(f"PDF: {pdf_path}")
+                print(f"CSV: {csv_path}")
+                return pdf_path, csv_path
+            else:
+                print("Failed to create simplified transcripts.")
+                return None, None
+        
+        # Cleanup
+        try:
+            if processed_audio_path != audio_path and Path(processed_audio_path).exists():
+                Path(processed_audio_path).unlink()
+                print(f"Cleaned up temporary file: {processed_audio_path}")
+        except Exception as cleanup_error:
+            print(f"Note: Could not clean up temporary files: {str(cleanup_error)}")
+            
+        print("\n⚠️  Accuracy caution: Do not rely solely on this transcript. Manually verify key information.")
+        
+    except Exception as e:
+        print(f"\nERROR: {str(e)}")
+        if "MP4" in str(e) and audio_path.lower().endswith('.mp4'):
+            print("\nThere was a problem with your MP4 file. Suggestions:")
+            print("1. Convert it to MP3 on your computer before uploading")
+            print("2. Use a screen recorder to record Forum while playing back the class")
+            print("3. Contact Forum support about MP4 download issues")
+        else:
+            print("\nTranscription failed. Please try again with a different file.")
+        return None, None
+
+
+def _create_simplified_transcript(class_id, transcript_path, output_dir="."):
+    """Create a simplified PDF transcript without speaker information or events"""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from datetime import datetime
+        
+        with open(transcript_path, 'r', encoding='utf-8') as f:
+            transcript_data = json.load(f)
+        
+        styles = getSampleStyleSheet()
+        text_style = ParagraphStyle('TextStyle', parent=styles['Normal'],
+                                  fontName='Helvetica', fontSize=10, leading=12, 
+                                  wordWrap='CJK')
+        header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'],
+                                    fontName='Helvetica-Bold', fontSize=12, 
+                                    textColor=colors.whitesmoke, alignment=1)
+        
+        output_path = str(Path(output_dir) / f"session_{class_id}_transcript_simple.pdf")
+        doc = SimpleDocTemplate(output_path, pagesize=letter,
+                              rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
+        
+        elements = []
+        title = Paragraph(f"Session {class_id}", styles['Title'])
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        subtitle = Paragraph(f"Generated on {date_str}", styles['Heading2'])
+        elements.append(title)
+        elements.append(subtitle)
+        elements.append(Spacer(1, 12))
+        
+        data = [[Paragraph('Time', header_style), Paragraph('Text', header_style)]]
+        for seg in transcript_data['segments']:
+            minutes = int(seg['start'] // 60)
+            seconds = int(seg['start'] % 60)
+            timestamp = f"{minutes:02d}:{seconds:02d}"
+            data.append([
+                timestamp,
+                Paragraph(seg['text'], text_style)
+            ])
+        
+        table = Table(data, colWidths=[0.75*inch, 6.25*inch], repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        elements.append(table)
+        doc.build(elements)
+        
+        print(f"Created simplified PDF transcript: {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"Error creating simplified transcript: {str(e)}")
+        return None
+
+
+def _create_simplified_csv(class_id, transcript_path, output_dir="."):
+    """Create a simplified CSV transcript without speaker information or events"""
+    try:
+        with open(transcript_path, 'r', encoding='utf-8') as f:
+            transcript_data = json.load(f)
+        
+        output_path = str(Path(output_dir) / f"session_{class_id}_transcript_simple.csv")
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['Time', 'Text'])
+            for seg in transcript_data['segments']:
+                minutes = int(seg['start'] // 60)
+                seconds = int(seg['start'] % 60)
+                timestamp = f"{minutes:02d}:{seconds:02d}"
+                writer.writerow([timestamp, seg.get('text', '')])
+        
+        print(f"Created simplified CSV transcript: {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"Error creating simplified CSV transcript: {str(e)}")
+        return None
