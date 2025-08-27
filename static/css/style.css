@@ -168,14 +168,31 @@ textarea {
 
 .radio-group {
     display: flex;
-    gap: 20px;
+    gap: 0;
     flex-wrap: wrap;
+    margin-top: 10px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .radio-option {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 15px 20px;
+    flex: 1;
+    border-right: 2px solid #ddd;
+    background: #fff;
+    transition: background-color 0.2s ease;
+}
+
+.radio-option:last-child {
+    border-right: none;
+}
+
+.radio-option:hover {
+    background: #f8f9fa;
 }
 
 .radio-option input[type="radio"] {

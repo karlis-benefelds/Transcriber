@@ -60,9 +60,9 @@ def get_initial_analysis_prompt():
     """Get the system prompt for initial transcript analysis"""
     return """You are a classroom analyst specializing in discussion-based undergraduate classes with international students.
 
-Analyze transcripts and provide a well-formatted response using proper line breaks, bullet points, and clear sections.
+Analyze transcripts and provide a well-formatted response using proper markdown formatting.
 
-Format your response exactly like this structure with proper spacing:
+CRITICAL: Use exactly this format with proper markdown syntax:
 
 ## 📊 CLASS OVERVIEW
 
@@ -127,7 +127,13 @@ Format your response exactly like this structure with proper spacing:
 - [action 1]
 - [action 2]
 
-Use proper markdown formatting with headers (##), subheaders (**bold**), bullet points (-), and line breaks between sections for readability."""
+FORMATTING RULES:
+- Use ## for main section headings with emojis
+- Use **text** for bold subsection headers and important terms
+- Use - for bullet points
+- Include emojis in section headers exactly as shown
+- Leave blank lines between sections
+- Always bold important categories and labels"""
 
 def get_chat_system_prompt():
     """Get the system prompt for ongoing chat conversations"""
@@ -208,7 +214,9 @@ Rubric
 
 ### OUTPUT STRUCTURE
 
-📊 METRICS (QUANTITATIVE)
+When the prompt is appropriate format responses using proper markdown:
+
+## 📊 METRICS (QUANTITATIVE)
 - Speaker Turn Count (per speaker)
 - Total Student Participants
 - Average Student Comment Length
@@ -216,16 +224,23 @@ Rubric
 - Engagement Density Score (0–5)
 - Clarity Score (0–5)
 
-🧠 OBJECTIVE QUALITATIVE ANALYSIS
+## 🧠 OBJECTIVE QUALITATIVE ANALYSIS
 - Use NEUTRAL, DESCRIPTIVE LANGUAGE
 - Evaluate communication without speculation
 - Highlight sections that support observations
 - Avoid personal opinions or assumptions
 
-✅ ACTIONABLE RECOMMENDATIONS
+## ✅ ACTIONABLE RECOMMENDATIONS
 - Communication techniques to increase clarity
 - Discussion strategies to enhance interaction
 - Suggestions tailored for international student settings
+
+FORMATTING REQUIREMENTS:
+- Use ## for main section headings with emojis
+- Use **text** for important terms and categories
+- Use - for bullet points
+- Include proper emojis in headings (📊, 🧠, ✅, 🎯, etc.)
+- Bold key terms and section labels
 
 ---
 
@@ -457,16 +472,25 @@ def start_transcription():
             'created_at': str(datetime.datetime.now())
         }
         
-        # Start transcription in background
+        # Define progress callback
+        def progress_callback(update):
+            job_status[job_id].update(update)
+        
+        # Start transcription asynchronously
         transcriber.start_transcription(
             job_id=job_id,
             curl_command=curl_command,
             audio_source=audio_source,
             privacy_mode=privacy_mode,
-            status_callback=lambda status: update_job_status(job_id, status)
+            status_callback=progress_callback
         )
         
-        return jsonify({'job_id': job_id})
+        # Return job ID for polling
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'message': 'Transcription started successfully'
+        })
         
     except Exception as e:
         app.logger.error(f"Transcription start error: {str(e)}\n{traceback.format_exc()}")
@@ -604,7 +628,7 @@ def ai_chat():
                     "content": user_prompt
                 }
             ],
-            max_completion_tokens=16000
+            max_completion_tokens=8000
         )
         
         ai_response = response.choices[0].message.content

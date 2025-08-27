@@ -2,8 +2,23 @@ class TranscriptionApp {
     constructor() {
         this.currentJobId = null;
         this.statusCheckInterval = null;
+        this.isPolling = false;
         this.initializeElements();
         this.bindEvents();
+        this.setupVisibilityHandling();
+    }
+
+    setupVisibilityHandling() {
+        // Pause polling when tab is not visible to reduce server load
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.isPolling) {
+                console.log('Tab hidden, pausing status checks');
+                this.clearStatusChecking();
+            } else if (!document.hidden && this.currentJobId && !this.statusCheckInterval) {
+                console.log('Tab visible again, resuming status checks');
+                this.startStatusChecking();
+            }
+        });
     }
 
     initializeElements() {
@@ -156,6 +171,12 @@ class TranscriptionApp {
     async handleFormSubmit(e) {
         e.preventDefault();
 
+        // Prevent multiple simultaneous submissions
+        if (this.currentJobId || this.isPolling) {
+            console.warn('Transcription already in progress');
+            return;
+        }
+
         if (!this.validateForm()) {
             return;
         }
@@ -204,30 +225,96 @@ class TranscriptionApp {
     }
 
     async startStatusChecking() {
+        // Clear any existing interval to prevent multiple polling loops
+        if (this.statusCheckInterval) {
+            clearInterval(this.statusCheckInterval);
+            this.statusCheckInterval = null;
+        }
+
+        this.isPolling = true;
+        let attemptCount = 0;
+        const maxAttempts = 600; // 30 minutes max (600 attempts * 3 seconds = 1800 seconds)
+        
         this.statusCheckInterval = setInterval(async () => {
+            attemptCount++;
+            
+            // Safety check: stop polling after max attempts
+            if (attemptCount > maxAttempts) {
+                console.warn('Max polling attempts reached, stopping status checks');
+                clearInterval(this.statusCheckInterval);
+                this.statusCheckInterval = null;
+                this.showError('Transcription timeout - process took too long. Please try again.');
+                return;
+            }
+
             try {
+                // Checking transcription status
                 const response = await fetch(`/api/status/${this.currentJobId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const status = await response.json();
+                // Status response received
 
                 this.updateProgress(status);
 
                 if (status.status === 'completed') {
+                    console.log('Transcription completed, stopping polling');
                     clearInterval(this.statusCheckInterval);
+                    this.statusCheckInterval = null;
                     this.showResults(status);
                 } else if (status.status === 'error') {
+                    console.log('Transcription error, stopping polling');
                     clearInterval(this.statusCheckInterval);
+                    this.statusCheckInterval = null;
                     this.showError(status.message || 'Transcription failed');
                 }
 
             } catch (error) {
-                console.error('Status check failed:', error);
+                console.error(`Status check failed (attempt ${attemptCount}):`, error);
+                
+                // If we get too many consecutive failures, stop polling
+                if (attemptCount > 10 && attemptCount % 10 === 0) {
+                    console.warn(`Multiple status check failures (${attemptCount} attempts), but continuing...`);
+                }
             }
-        }, 2000);
+        }, 3000); // Increased to 3 seconds to reduce server load
     }
 
     updateProgress(status) {
         const message = status.message || 'Processing...';
         this.statusMessage.textContent = message;
+        
+        // Update step indicators
+        const step = this.getStepFromMessage(message);
+        if (step) {
+            this.updateStepIndicators(step);
+        }
+    }
+
+    getStepFromMessage(message) {
+        if (message.includes('class information') || message.includes('Extract')) return 1;
+        if (message.includes('Forum') || message.includes('Fetch')) return 2;
+        if (message.includes('audio') || message.includes('Processing audio')) return 3;
+        if (message.includes('Transcrib') || message.includes('transcrib')) return 4;
+        if (message.includes('Generat') || message.includes('PDF') || message.includes('CSV')) return 5;
+        return null;
+    }
+
+    updateStepIndicators(currentStep) {
+        const steps = document.querySelectorAll('.step-indicator');
+        steps.forEach((step, index) => {
+            const stepNumber = index + 1;
+            step.classList.remove('active', 'completed');
+            
+            if (stepNumber < currentStep) {
+                step.classList.add('completed');
+            } else if (stepNumber === currentStep) {
+                step.classList.add('active');
+            }
+        });
     }
 
     showProgress() {
@@ -236,14 +323,23 @@ class TranscriptionApp {
         this.errorContainer.classList.add('hidden');
         this.progressContainer.classList.remove('hidden');
 
-        // Reset progress message
-        this.statusMessage.textContent = 'Initializing...';
+        // Reset progress message and start with first step
+        this.statusMessage.textContent = '🚀 Starting transcription process...';
+        this.updateStepIndicators(1);
     }
 
     showResults(status) {
-        this.progressContainer.classList.add('hidden');
-        this.errorContainer.classList.add('hidden');
-        this.resultsContainer.classList.remove('hidden');
+        // Ensure polling is stopped
+        this.clearStatusChecking();
+        
+        // Mark all steps as completed before hiding progress
+        this.updateStepIndicators(6); // Beyond the last step to mark all complete
+        
+        setTimeout(() => {
+            this.progressContainer.classList.add('hidden');
+            this.errorContainer.classList.add('hidden');
+            this.resultsContainer.classList.remove('hidden');
+        }, 1000); // Brief delay to show all steps completed
 
         // Set download links
         this.downloadPdf.href = `/api/download/${this.currentJobId}/pdf`;
@@ -270,10 +366,17 @@ class TranscriptionApp {
 
         this.errorMessage.textContent = message;
 
+        // Always clear polling interval
+        this.clearStatusChecking();
+    }
+
+    clearStatusChecking() {
         if (this.statusCheckInterval) {
+            console.log('Clearing status check interval');
             clearInterval(this.statusCheckInterval);
             this.statusCheckInterval = null;
         }
+        this.isPolling = false;
     }
 
     resetForm() {
@@ -289,12 +392,9 @@ class TranscriptionApp {
         this.handleSourceChange(); // Reset source groups
         this.resetSubmitButton();
 
-        // Clear job tracking
+        // Clear job tracking and polling
         this.currentJobId = null;
-        if (this.statusCheckInterval) {
-            clearInterval(this.statusCheckInterval);
-            this.statusCheckInterval = null;
-        }
+        this.clearStatusChecking();
     }
 
     resetSubmitButton() {
@@ -306,7 +406,11 @@ class TranscriptionApp {
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize if not already handled by inline scripts
-    if (typeof window.transcriptionAppInitialized === 'undefined') {
+    if (typeof window.transcriptionAppInitialized === 'undefined' || !window.transcriptionAppInitialized) {
+        console.log('Initializing TranscriptionApp from script.js');
+        window.transcriptionAppInitialized = true;
         new TranscriptionApp();
+    } else {
+        console.log('TranscriptionApp already initialized, skipping...');
     }
 });

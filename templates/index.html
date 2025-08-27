@@ -121,7 +121,7 @@
         
         /* Transcripts Section in Sidebar */
         .transcripts-section {
-            padding: var(--space-3) var(--space-2);
+            padding: var(--space-2) var(--space-2);
             border-top: 1px solid var(--sidebar-border);
             flex-shrink: 0;
         }
@@ -229,7 +229,7 @@
         /* Navigation System */
         .sidebar-nav {
             flex: 1;
-            padding: var(--space-2) 0;
+            padding: var(--space-1) 0;
             display: flex;
             flex-direction: column;
             gap: var(--space-1);
@@ -239,7 +239,7 @@
             display: flex;
             align-items: center;
             gap: var(--space-2);
-            padding: var(--space-2) var(--space-2);
+            padding: var(--space-2);
             margin: 0 var(--space-1);
             border-radius: 4px;
             color: var(--nav-text-default);
@@ -689,6 +689,21 @@
         .app-state {
             text-align: center;
             padding: var(--space-8) 0;
+            width: 100%;
+            max-width: none;
+            margin: 0 auto;
+        }
+
+        .app-state#progress-state {
+            background-color: var(--color-white);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: var(--space-6);
+            margin: var(--space-4);
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            min-height: 500px;
         }
 
         .state-title {
@@ -706,11 +721,34 @@
         }
 
         /* Loading States */
+        .loading-header {
+            text-align: center;
+            margin-bottom: var(--space-6);
+            padding: var(--space-4);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            border: 1px solid var(--color-gray-200);
+        }
+
+        .loading-title {
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            color: var(--color-black);
+            margin-bottom: var(--space-2);
+            letter-spacing: -0.025em;
+        }
+
+        .loading-subtitle {
+            font-size: var(--text-lg);
+            color: var(--color-gray-600);
+            font-weight: var(--font-medium);
+        }
+
         .loading-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: var(--space-4);
+            gap: var(--space-6);
         }
 
         .loading-spinner {
@@ -722,9 +760,153 @@
             animation: spin 1s linear infinite;
         }
 
+        .loading-spinner-large {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin-bottom: var(--space-4);
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin-rings 2s linear infinite;
+        }
+
+        .spinner-ring:nth-child(1) {
+            border-top-color: var(--color-black);
+            animation-delay: 0s;
+        }
+
+        .spinner-ring:nth-child(2) {
+            border-right-color: var(--color-gray-600);
+            animation-delay: 0.2s;
+        }
+
+        .spinner-ring:nth-child(3) {
+            border-bottom-color: var(--color-gray-400);
+            animation-delay: 0.4s;
+        }
+
+        .spinner-ring:nth-child(4) {
+            border-left-color: var(--color-gray-300);
+            animation-delay: 0.6s;
+        }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        @keyframes spin-rings {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-tips {
+            background-color: var(--color-gray-50);
+            border: 1px solid var(--color-gray-200);
+            border-radius: 8px;
+            padding: var(--space-4);
+            max-width: 400px;
+            text-align: center;
+            margin-top: var(--space-4);
+        }
+
+        .tip-text {
+            font-size: var(--text-md);
+            color: var(--color-gray-700);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .progress-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            margin-bottom: var(--space-6);
+            max-width: 400px;
+        }
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            opacity: 0.4;
+            transition: all var(--transition-base) var(--ease-out);
+        }
+
+        .step-indicator.active {
+            opacity: 1;
+        }
+
+        .step-indicator.completed {
+            opacity: 0.8;
+        }
+
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--color-gray-300);
+            color: var(--color-gray-600);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: var(--font-semibold);
+            font-size: var(--text-md);
+            transition: all var(--transition-base) var(--ease-out);
+            flex-shrink: 0;
+        }
+
+        .step-indicator.active .step-circle {
+            background-color: var(--color-black);
+            color: var(--color-white);
+            animation: pulse 2s infinite;
+        }
+
+        .step-indicator.completed .step-circle {
+            background-color: var(--color-success);
+            color: var(--color-white);
+        }
+
+        .step-indicator.completed .step-circle::before {
+            content: '✓';
+            font-size: var(--text-sm);
+        }
+
+        .step-indicator.completed .step-circle {
+            text-indent: -9999px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.1);
+            }
+        }
+
+        .step-label {
+            font-size: var(--text-lg);
+            font-weight: var(--font-medium);
+            color: var(--color-gray-700);
+            transition: color var(--transition-base) var(--ease-out);
+        }
+
+        .step-indicator.active .step-label {
+            color: var(--color-black);
+            font-weight: var(--font-semibold);
+        }
+
+        .step-indicator.completed .step-label {
+            color: var(--color-gray-600);
         }
 
         .progress-details {
@@ -814,30 +996,33 @@
             font-size: var(--text-2xl);
             font-weight: var(--font-bold);
             color: var(--color-black);
-            margin-bottom: var(--space-1);
+            margin-bottom: var(--space-3);
         }
 
         .chat-subtitle {
-            font-size: var(--text-lg);
+            font-size: var(--text-md);
             color: var(--color-gray-600);
-            margin-bottom: var(--space-4);
+            margin-bottom: var(--space-1);
+            line-height: 1.5;
         }
 
         .chat-actions {
             display: flex;
             gap: var(--space-2);
             flex-wrap: wrap;
+            margin-top: var(--space-1);
+            margin-bottom: var(--space-2);
         }
 
         .chat-action-btn {
-            padding: var(--space-2) var(--space-3);
+            padding: var(--space-2) var(--space-4);
             font-size: var(--text-sm);
             font-weight: var(--font-medium);
             border: 1px solid var(--color-gray-200);
             background: var(--color-white);
             color: var(--color-gray-700);
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 6px;
             transition: all var(--transition-fast) var(--ease-out);
         }
 
@@ -864,16 +1049,18 @@
         .chat-messages-area {
             flex: 1;
             overflow-y: auto;
-            padding: var(--space-4);
+            padding: var(--space-2) var(--space-4);
+            margin-top: var(--space-2);
             background: var(--color-white);
         }
 
         .chat-messages {
             width: 100%;
             margin: 0;
+            padding-top: var(--space-2);
             display: flex;
             flex-direction: column;
-            gap: var(--space-6);
+            gap: var(--space-3);
             max-width: none;
         }
 
@@ -898,7 +1085,7 @@
             border-radius: 16px;
             line-height: 1.6;
             word-wrap: break-word;
-            font-size: var(--text-lg);
+            font-size: var(--text-md);
         }
 
         .ai-message .message-content {
@@ -913,9 +1100,9 @@
             border-bottom-right-radius: 4px;
         }
 
-        .message-content {
+        .ai-message .message-content {
             font-weight: var(--font-regular);
-            line-height: 1.7;
+            line-height: 1.6;
         }
 
         .message-content h1 {
@@ -1011,6 +1198,7 @@
             border-top: 1px solid var(--color-gray-200);
             background: var(--color-white);
             flex-shrink: 0;
+            margin-top: var(--space-3);
         }
 
         .chat-input-container {
@@ -1030,12 +1218,12 @@
             border-radius: 12px;
             background: var(--color-gray-50);
             font-family: inherit;
-            font-size: var(--text-lg);
+            font-size: var(--text-md);
             resize: none;
             min-height: 52px;
             max-height: 120px;
             transition: all var(--transition-base) var(--ease-out);
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         .chat-input-container textarea:focus {
@@ -1390,12 +1578,50 @@
 
                     <!-- Progress State -->
                     <div class="app-state hidden" id="progress-state">
+                        <div class="loading-header">
+                            <h2 class="loading-title">🎯 Transcription in Progress</h2>
+                            <p class="loading-subtitle">Your transcript is being generated. Please don't close this tab.</p>
+                        </div>
+                        
                         <div class="loading-container">
-                            <div class="loading-spinner" role="progressbar" aria-label="Processing transcription"></div>
+                            <div class="loading-spinner-large">
+                                <div class="spinner-ring"></div>
+                                <div class="spinner-ring"></div>
+                                <div class="spinner-ring"></div>
+                                <div class="spinner-ring"></div>
+                            </div>
+                            
+                            <div class="progress-steps" id="progress-steps">
+                                <div class="step-indicator" data-step="1">
+                                    <div class="step-circle">1</div>
+                                    <div class="step-label">Extracting class information</div>
+                                </div>
+                                <div class="step-indicator" data-step="2">
+                                    <div class="step-circle">2</div>
+                                    <div class="step-label">Fetching Forum data</div>
+                                </div>
+                                <div class="step-indicator" data-step="3">
+                                    <div class="step-circle">3</div>
+                                    <div class="step-label">Processing audio file</div>
+                                </div>
+                                <div class="step-indicator" data-step="4">
+                                    <div class="step-circle">4</div>
+                                    <div class="step-label">Transcribing audio</div>
+                                </div>
+                                <div class="step-indicator" data-step="5">
+                                    <div class="step-circle">5</div>
+                                    <div class="step-label">Generating outputs</div>
+                                </div>
+                            </div>
+                            
                             <div class="progress-details">
-                                <p class="progress-text" id="progress-text">Processing transcription</p>
-                                <p class="progress-meta">Estimated completion: 20-30 minutes</p>
+                                <p class="progress-text" id="progress-text">🔄 Processing transcription</p>
+                                <p class="progress-meta">⏱️ Estimated completion: 20-30 minutes</p>
                                 <p class="state-description" id="status-message">Initializing transcription engine...</p>
+                            </div>
+                            
+                            <div class="loading-tips">
+                                <p class="tip-text">💡 <strong>Tip:</strong> Transcription quality depends on audio clarity and speaker volume.</p>
                             </div>
                         </div>
                     </div>
@@ -1446,6 +1672,9 @@
                                 <button type="button" class="chat-action-btn primary" id="initial-analysis-btn" disabled>
                                     Initial Analysis
                                 </button>
+                                <button type="button" class="chat-action-btn" id="export-pdf-btn" disabled>
+                                    Export PDF
+                                </button>
                                 <button type="button" class="chat-action-btn" id="clear-analysis-btn">
                                     Clear Chat
                                 </button>
@@ -1456,7 +1685,7 @@
                         <div class="chat-messages-area">
                             <div class="chat-messages" id="ai-chat-messages">
                                 <div class="ai-message">
-                                    <div class="message-content">
+                                    <div class="message-content" style="font-weight: var(--font-regular); color: var(--color-gray-600);">
                                         Ready to find out what really happened in your class? Upload a transcript and I'll spill the academic tea.
                                     </div>
                                 </div>
@@ -1497,14 +1726,14 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
-        // Prevent double initialization
-        window.transcriptionAppInitialized = true;
-        window.aiChatInitialized = true;
+        // External script.js handles transcription functionality
         
         // Tab Navigation System
         document.addEventListener('DOMContentLoaded', function() {
             const tabButtons = document.querySelectorAll('.nav-item');
             const tabContents = document.querySelectorAll('.tab-content');
+            
+            // Transcription form handling is done by external script.js
 
             function switchTab(targetTab) {
                 // Update tab buttons
@@ -1674,6 +1903,7 @@
             const transcriptList = document.getElementById('transcript-list');
             const initialAnalysisBtn = document.getElementById('initial-analysis-btn');
             const clearAnalysisBtn = document.getElementById('clear-analysis-btn');
+            const exportPdfBtn = document.getElementById('export-pdf-btn');
             const chatInput = document.getElementById('ai-chat-input');
             const sendBtn = document.getElementById('ai-send-btn');
             const chatMessagesContainer = document.getElementById('ai-chat-messages');
@@ -1743,12 +1973,21 @@
                 initialAnalysisBtn.disabled = false;
                 chatInput.disabled = false;
                 sendBtn.disabled = false;
+                updateExportButtonState();
             }
 
             function disableChatInterface() {
                 initialAnalysisBtn.disabled = true;
                 chatInput.disabled = true;
                 sendBtn.disabled = true;
+                exportPdfBtn.disabled = true;
+            }
+
+            function updateExportButtonState() {
+                // Enable export button if there are meaningful conversations (more than just welcome message)
+                const messages = chatMessagesContainer.querySelectorAll('.ai-message:not(#typing-indicator), .user-message');
+                const hasConversation = messages.length > 1; // More than just the welcome message
+                exportPdfBtn.disabled = !hasConversation;
             }
 
             // Make functions global for onclick handlers
@@ -1761,6 +2000,11 @@
                 if (enabledFiles.length === 0) return;
                 
                 sendAIMessage('', true); // Send as initial analysis
+            });
+
+            // Export PDF
+            exportPdfBtn.addEventListener('click', function() {
+                exportChatToPDF();
             });
 
             // Clear Chat
@@ -1783,6 +2027,9 @@
                     </div>
                 `;
                 chatMessagesContainer.appendChild(newTypingIndicator);
+                
+                // Update export button state
+                updateExportButtonState();
             });
 
             // Send Message
@@ -1831,6 +2078,7 @@
                 // Insert before typing indicator
                 chatMessagesContainer.insertBefore(aiMessage, typingIndicator);
                 scrollToBottom();
+                updateExportButtonState();
             }
 
             function showTypingIndicator() {
@@ -1853,13 +2101,12 @@
             }
 
             function formatAIResponse(text) {
-                // Enhanced markdown formatting
+                // Enhanced markdown formatting with emoji support
                 let formatted = text
-                    // Handle headings first (with emojis)
-                    .replace(/^(#{1,3})\s*(.*)$/gm, function(match, hashes, content) {
-                        const level = hashes.length;
-                        return `<h${level}>${content.trim()}</h${level}>`;
-                    })
+                    // Handle headings first (with emojis) - look for ## pattern
+                    .replace(/^##\s*(.*)$/gm, '<h2>$1</h2>')
+                    .replace(/^###\s*(.*)$/gm, '<h3>$1</h3>')
+                    .replace(/^####\s*(.*)$/gm, '<h3>$1</h3>')
                     // Handle bold text
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                     // Handle italic text  
@@ -1873,7 +2120,7 @@
                 // Wrap bullet points in ul tags
                 formatted = formatted.replace(/((<li>.*?<\/li>\s*)+)/g, '<ul>$1</ul>');
                 
-                // Wrap in paragraphs
+                // Wrap in paragraphs if not starting with heading or list
                 if (!formatted.startsWith('<h') && !formatted.startsWith('<ul')) {
                     formatted = '<p>' + formatted + '</p>';
                 }
@@ -1903,7 +2150,8 @@
 
                     const response = await fetch('/api/ai-chat', {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        credentials: 'same-origin'
                     });
 
                     const data = await response.json();
@@ -1921,6 +2169,221 @@
                     console.error('AI Chat error:', error);
                 }
             }
+
+            // PDF Export Function
+            function exportChatToPDF() {
+                try {
+                    // Get jsPDF from the global window object
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    
+                    // Set up the document
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const margin = 20;
+                    const maxWidth = pageWidth - (margin * 2);
+                    
+                    // Add title
+                    doc.setFontSize(16);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('AI Transcript Analysis Chat Export', margin, margin);
+                    
+                    // Add export date
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'normal');
+                    const exportDate = new Date().toLocaleString();
+                    doc.text(`Exported: ${exportDate}`, margin, margin + 15);
+                    
+                    let yPosition = margin + 35;
+                    
+                    // Get all messages except typing indicators and welcome message
+                    const messages = chatMessagesContainer.querySelectorAll('.ai-message:not(.typing-indicator):not(:first-child), .user-message');
+                    
+                    if (messages.length === 0) {
+                        doc.setFontSize(12);
+                        doc.text('No conversation to export.', margin, yPosition);
+                    } else {
+                        messages.forEach((messageDiv, index) => {
+                            const isAI = messageDiv.classList.contains('ai-message');
+                            const messageContent = messageDiv.querySelector('.message-content');
+                            
+                            if (!messageContent) return;
+                            
+                            // Check if we need a new page for message header
+                            if (yPosition + 20 > pageHeight - margin) {
+                                doc.addPage();
+                                yPosition = margin;
+                            }
+                            
+                            // Add message header
+                            doc.setFontSize(12);
+                            doc.setFont(undefined, 'bold');
+                            const sender = isAI ? 'AI Assistant' : 'User';
+                            doc.text(`${sender}:`, margin, yPosition);
+                            yPosition += 15;
+                            
+                            // Process the formatted content
+                            yPosition = processFormattedContent(doc, messageContent, margin, yPosition, maxWidth, pageHeight);
+                            
+                            yPosition += 15; // Add space between messages
+                        });
+                    }
+                    
+                    // Generate filename with timestamp
+                    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                    const filename = `ai-chat-analysis-${timestamp}.pdf`;
+                    
+                    // Save the PDF
+                    doc.save(filename);
+                    
+                } catch (error) {
+                    console.error('Error exporting PDF:', error);
+                    alert('Failed to export PDF. Please ensure you have a stable internet connection and try again.');
+                }
+            }
+            
+            // Helper function to process formatted content
+            function processFormattedContent(doc, element, margin, yPosition, maxWidth, pageHeight) {
+                const children = element.children.length > 0 ? element.children : [element];
+                
+                for (let child of children) {
+                    // Check if we need a new page
+                    if (yPosition + 15 > pageHeight - margin) {
+                        doc.addPage();
+                        yPosition = margin;
+                    }
+                    
+                    const tagName = child.tagName ? child.tagName.toLowerCase() : null;
+                    let text = child.textContent || child.innerText || '';
+                    
+                    // Clean up text and handle emojis for PDF compatibility
+                    text = text.trim();
+                    
+                    // Replace problematic emojis with text equivalents for PDF
+                    const emojiMap = {
+                        '📊': '[CHART]',
+                        '🎯': '[TARGET]', 
+                        '⚠️': '[WARNING]',
+                        '🚀': '[ROCKET]',
+                        '📈': '[GRAPH]',
+                        '💡': '[LIGHTBULB]',
+                        '✅': '[CHECKMARK]',
+                        '🧠': '[BRAIN]',
+                        '🔍': '[SEARCH]',
+                        '👥': '[GROUP]',
+                        '💬': '[CHAT]',
+                        '⭐': '[STAR]',
+                        '🔥': '[FIRE]',
+                        '⏰': '[CLOCK]',
+                        '📝': '[NOTE]',
+                        '🌟': '[SPARKLE]'
+                    };
+                    
+                    // Replace emojis for PDF compatibility
+                    Object.keys(emojiMap).forEach(emoji => {
+                        text = text.replace(new RegExp(emoji, 'g'), emojiMap[emoji]);
+                    });
+                    
+                    if (!text) continue;
+                    
+                    switch (tagName) {
+                        case 'h1':
+                            doc.setFontSize(14);
+                            doc.setFont(undefined, 'bold');
+                            yPosition += 8; // Extra space before heading
+                            const h1Lines = doc.splitTextToSize(text, maxWidth);
+                            h1Lines.forEach(line => {
+                                if (yPosition + 8 > pageHeight - margin) {
+                                    doc.addPage();
+                                    yPosition = margin;
+                                }
+                                doc.text(line, margin, yPosition);
+                                yPosition += 8;
+                            });
+                            yPosition += 4; // Extra space after heading
+                            break;
+                            
+                        case 'h2':
+                            doc.setFontSize(12);
+                            doc.setFont(undefined, 'bold');
+                            yPosition += 6; // Extra space before heading
+                            const h2Lines = doc.splitTextToSize(text, maxWidth);
+                            h2Lines.forEach(line => {
+                                if (yPosition + 7 > pageHeight - margin) {
+                                    doc.addPage();
+                                    yPosition = margin;
+                                }
+                                doc.text(line, margin, yPosition);
+                                yPosition += 7;
+                            });
+                            yPosition += 3; // Extra space after heading
+                            break;
+                            
+                        case 'h3':
+                            doc.setFontSize(11);
+                            doc.setFont(undefined, 'bold');
+                            yPosition += 4; // Extra space before heading
+                            const h3Lines = doc.splitTextToSize(text, maxWidth);
+                            h3Lines.forEach(line => {
+                                if (yPosition + 6 > pageHeight - margin) {
+                                    doc.addPage();
+                                    yPosition = margin;
+                                }
+                                doc.text(line, margin, yPosition);
+                                yPosition += 6;
+                            });
+                            yPosition += 2; // Extra space after heading
+                            break;
+                            
+                        case 'ul':
+                            // Process list items
+                            const listItems = child.querySelectorAll('li');
+                            listItems.forEach(li => {
+                                doc.setFontSize(10);
+                                doc.setFont(undefined, 'normal');
+                                const bulletText = `• ${li.textContent || li.innerText}`;
+                                const liLines = doc.splitTextToSize(bulletText, maxWidth - 10);
+                                
+                                liLines.forEach((line, lineIndex) => {
+                                    if (yPosition + 5 > pageHeight - margin) {
+                                        doc.addPage();
+                                        yPosition = margin;
+                                    }
+                                    // Indent continuation lines
+                                    const xPos = lineIndex === 0 ? margin + 5 : margin + 10;
+                                    doc.text(line, xPos, yPosition);
+                                    yPosition += 5;
+                                });
+                            });
+                            yPosition += 3; // Extra space after list
+                            break;
+                            
+                        case 'p':
+                        default:
+                            // Handle paragraphs and other text
+                            if (text.trim()) {
+                                doc.setFontSize(10);
+                                doc.setFont(undefined, 'normal');
+                                const pLines = doc.splitTextToSize(text, maxWidth);
+                                
+                                pLines.forEach(line => {
+                                    if (yPosition + 5 > pageHeight - margin) {
+                                        doc.addPage();
+                                        yPosition = margin;
+                                    }
+                                    doc.text(line, margin, yPosition);
+                                    yPosition += 5;
+                                });
+                                yPosition += 3; // Space after paragraph
+                            }
+                            break;
+                    }
+                }
+                
+                return yPosition;
+            }
+
+            // Transcription form handling is now in external script.js file
         });
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
