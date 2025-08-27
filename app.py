@@ -677,4 +677,7 @@ def update_job_status(job_id, status_update):
         job_status[job_id].update(status_update)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8888)
+    # Get port from environment variable or default to 8888 for local development
+    port = int(os.getenv('PORT', 8888))
+    debug = os.getenv('DEV_MODE', 'false').lower() == 'true'
+    app.run(debug=debug, host='0.0.0.0', port=port)

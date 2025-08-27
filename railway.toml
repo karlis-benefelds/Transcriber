@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "never"
+
+[env]
+# Railway will automatically set PORT
+# Add your environment variables in Railway dashboard:
+# OPENAI_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SECRET_KEY
